@@ -1,0 +1,13 @@
+[package]
+name = "tinifier"
+version = "0.1.0"
+edition = "2018"
+author = "Aaron Goodfellow"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+regex = "1"
+lazy_static = "1.4.0"
+clap = { version = "3.1.6", features = ["derive"] }
+colored = "2.0.0"
