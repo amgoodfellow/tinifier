@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 use std::{collections::HashMap, path::Path};
@@ -16,7 +17,7 @@ pub trait Persistence {
         S: Into<String> + Clone;
     fn contains_key<S>(&self, short_url: S) -> bool
     where
-        S: Into<String> + Clone;
+        S: Into<String> + Clone + Eq + std::hash::Hash;
 }
 
 pub struct InMemory {
@@ -48,9 +49,17 @@ impl Persistence for InMemory {
 
     fn contains_key<S>(&self, short_url: S) -> bool
     where
-        S: Into<String> + Clone,
+        S: Into<String> + Clone + Eq + std::hash::Hash,
     {
-        true
+        self.map.contains_key(&short_url.into())
+    }
+}
+
+impl InMemory {
+    pub fn new() -> Self {
+        InMemory {
+            map: HashMap::new(),
+        }
     }
 }
 
@@ -61,7 +70,7 @@ pub struct File<'a> {
 
 impl File<'_> {
     pub fn new() -> Self {
-        if let Some(file) = OpenOptions::new().read(true).open("/tmp/tinifier").ok() {
+        if let Some(file) = OpenOptions::new().read(true).open("/tmp/url-shortener").ok() {
             let lines = BufReader::new(file)
                 .lines()
                 .filter_map(|line| line.ok())
@@ -73,14 +82,15 @@ impl File<'_> {
                     }
                 })
                 .collect::<HashMap<String, UrlEntry>>();
+
             return File {
                 map: lines,
-                file_location: Path::new("/tmp/tinifier"),
+                file_location: Path::new("/tmp/url-shortener"),
             };
         }
         File {
             map: HashMap::new(),
-            file_location: Path::new("/tmp/tinifier"),
+            file_location: Path::new("/tmp/url-shortener"),
         }
     }
 }

@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use colored::Colorize;
 use regex::Regex;
 use std::str::FromStr;
@@ -7,8 +8,8 @@ use std::{env, time::Instant};
 pub struct UrlEntry {
     pub long_url: String,
     pub short_url: String,
-    pub expiration_date: Option<Instant>,
-    pub creation_date: Instant,
+    pub expiration_date: Option<DateTime<Utc>>,
+    pub creation_date: DateTime<Utc>,
     pub author: String,
 }
 
@@ -16,7 +17,7 @@ pub struct UrlEntry {
 pub struct UrlEntryRequest {
     pub long_url: Option<String>,
     pub short_url: Option<String>,
-    pub expiration_date: Option<Instant>,
+    pub expiration_date: Option<DateTime<Utc>>,
     pub author: String,
 }
 
@@ -31,7 +32,7 @@ impl UrlEntry {
             long_url: long_url.to_string(),
             short_url: short_url.to_string(),
             expiration_date: None,
-            creation_date: Instant::now(),
+            creation_date: chrono::Utc::now(),
             author: env::var("USER").unwrap_or("SYSTEM".to_string()),
         }
     }
@@ -110,7 +111,7 @@ impl FromStr for UrlEntry {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
             static ref URL_ENTRY_RE: Regex =
-                Regex::new(r"^(?P<short>[a-zA-Z0-9]+):(?P<long>\w+),(?P<expiration>.*),(?P<creation>.*),(?P<author>\w+)$").unwrap();
+                Regex::new(r"^(?P<short>[a-zA-Z0-9]+):(?P<long>.*?),(?P<expiration>.*?),(?P<creation>.*?),(?P<author>\w+)$").unwrap();
         }
 
         if let Some(captures) = URL_ENTRY_RE.captures(s) {
@@ -147,8 +148,10 @@ impl FromStr for UrlEntry {
             Ok(UrlEntry {
                 short_url,
                 long_url,
-                expiration_date: None,
-                creation_date: Instant::now(),
+                expiration_date: expiration_date.parse::<DateTime<Utc>>().ok(),
+                creation_date: creation_date
+                    .parse::<DateTime<Utc>>()
+                    .expect("No creation date given"),
                 author,
             })
         } else {

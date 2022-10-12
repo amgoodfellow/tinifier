@@ -3,9 +3,7 @@ extern crate lazy_static;
 use clap::{Parser, Subcommand};
 use persistence::Persistence;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::time::Instant;
 mod persistence;
 mod url_entry;
 use crate::url_entry::{UrlEntry, UrlEntryRequest};
@@ -55,35 +53,14 @@ where
     let short_url = encode_hash(hash);
 
     if map.contains_key(&short_url) {
+        println!("{:?}", short_url);
+        println!("{:?}", map.contains_key(short_url));
         panic!("There was a collision");
     } else {
         let entry = UrlEntry::new(long_url, &short_url);
         map.insert(short_url.clone(), entry.clone());
         return Some(entry);
     }
-}
-
-/// Adds a `UrlEntry` to the configured persistence layer
-///
-/// If the entry was successfully created it is also returned.
-/// If the entry wasn't successfully created, `None` is returned
-///
-/// If a collision occurs, the method will `panic`
-fn add_entry<'a, T: 'a>(entry: UrlEntry, map: &'a mut T) -> Option<&'a UrlEntry>
-where
-    T: Persistence,
-{
-    let short_url = encode_hash(create_hash(&entry.long_url)?);
-    map.insert(
-        short_url.clone(),
-        UrlEntry {
-            long_url: entry.long_url.clone(),
-            short_url,
-            expiration_date: entry.expiration_date,
-            creation_date: Instant::now(),
-            author: entry.author,
-        },
-    )
 }
 
 /// The provided `UrlEntryRequest` will be merged with the `UrlEntry` associated with the given `short_url`
@@ -144,37 +121,21 @@ enum Commands {
     Remove {
         short_url: String,
     },
+    Show {},
 }
 
 fn main() {
     let args = Cli::parse();
 
-    let mut persistence = persistence::File::new();
-
-    let added = "ADDED:\n".green().bold();
+    //let mut persistence = persistence::File::new();
+    let mut persistence = persistence::InMemory::new();
 
     match &args.command {
         Commands::Add { long_url } => {
-            let a = add_url(long_url, &mut persistence).unwrap();
-
-            let long_url = "\tLong URL: ".truecolor(135, 135, 135);
-            let short_url = "\tShort URL: ".truecolor(135, 135, 135);
-            let expiration_date = "\tExpiration Date: ".truecolor(135, 135, 135);
-            let creation_date = "\tCreation Date: ".truecolor(135, 135, 135);
-            let author = "\tAuthor: ".truecolor(135, 135, 135);
             println!(
-                "{}\n{}{}\n{}{}\n{}{:?}\n{}{:?}\n{}{}\n",
-                added,
-                long_url,
-                a.long_url,
-                short_url,
-                a.short_url,
-                expiration_date,
-                a.expiration_date,
-                creation_date,
-                a.creation_date,
-                author,
-                a.author
+                "{}\n{}",
+                "ADDED:\n".green().bold(),
+                add_url(long_url, &mut persistence).unwrap()
             );
         }
         Commands::View { short_url, long } => {
@@ -197,6 +158,9 @@ fn main() {
         }
         Commands::Remove { short_url } => {
             println!("Removing {:?}", short_url);
+        }
+        Commands::Show {} => {
+            println!("Here's all your links: []")
         }
     }
 }
